@@ -235,7 +235,7 @@ char *_util_state_2_string(int state) {
 /*************************************************/
 /**\name CLASS THREAD                            */
 /*************************************************/
-Threads::Threads() : current_thread(0), thread_count(0), thread_error(0) {
+Threads::Threads() : current_thread(0), thread_count(1), thread_error(0) {
     // initialize context_switch() globals from thread 0, which is MSP and always running
     currentThread = threadp; // thread 0 is active
     currentSave = &threadp[0].save;
@@ -452,6 +452,8 @@ void Threads::del_process(void) {
     //   delete[] me->stack;
     //   me->stack = 0;
     // }
+    // Serial.print("del:");
+    // Serial.println(threads.id());
     threads.thread_count--;
     me->flags = ENDED; // clear the flags so thread can stop and be reused
     threads.start(old_state);
@@ -556,12 +558,10 @@ int Threads::addThread(ThreadFunction p, void *arg, int stack_size, void *stack)
             tp->ticks = DEFAULT_TICKS;
             tp->flags = RUNNING;
             tp->save.lr = 0xFFFFFFF9;
-
 #ifdef DEBUG
             tp->cyclesStart = ARM_DWT_CYCCNT;
             tp->cyclesAccum = 0;
 #endif
-
             currentActive = old_state;
             thread_count++;
             if (old_state == STARTED || old_state == FIRST_RUN)
@@ -600,7 +600,12 @@ int Threads::wait(int id, unsigned int timeout_ms) {
 }
 
 int Threads::kill(int id) {
-    threadp[id].flags = ENDED;
+    if (threadp[id].flags != ENDED) {
+        int old_state = threads.stop();
+        threads.thread_count--;
+        threadp[id].flags = ENDED;
+        threads.start(old_state);
+    }
     return id;
 }
 
@@ -751,26 +756,23 @@ int Threads::getStackRemaining(int id) {
 
 char *Threads::threadsInfo(void) {
     static char _buffer[Threads::UTIL_THREADS_BUFFER_LENGTH];
-    uint _buffer_cursor = 0;
-    _buffer_cursor = sprintf(_buffer, "_____\n");
-    for (int each_thread = 0; each_thread < thread_count; each_thread++) {
-        if (!threadp[each_thread].invalid()) {
-            _buffer_cursor += sprintf(_buffer + _buffer_cursor, "%d:", each_thread);
-            _buffer_cursor += sprintf(_buffer + _buffer_cursor, "Stack size:%d|",
-                                      threadp[each_thread].stack_size);
-            _buffer_cursor += sprintf(_buffer + _buffer_cursor, "Used:%d|Remains:%d|",
-                                      getStackUsed(each_thread),
-                                      getStackRemaining(each_thread));
-            char *_thread_state = _util_state_2_string(threadp[each_thread].flags);
-            _buffer_cursor += sprintf(_buffer + _buffer_cursor, "State:%s|",
-                                      _thread_state);
-#ifdef DEBUG
-            _buffer_cursor += sprintf(_buffer + _buffer_cursor, "cycles:%lu\n",
-                                      threadp[each_thread].cyclesAccum);
-#else
-            _buffer_cursor += sprintf(_buffer + _buffer_cursor, "\n");
-#endif
+    uint _buffer_cursor = sprintf(_buffer, "\n----[ Thread Info %d/%d ]----\n", thread_count, MAX_THREADS);
+    for (int each_thread = 0; each_thread < MAX_THREADS; each_thread++) {
+        if (threadp[each_thread].invalid())
+            continue;
+        char *_thread_state = _util_state_2_string(threadp[each_thread].flags);
+        int used = getStackUsed(each_thread);
+        int avlb = threadp[each_thread].stack_size;
+        _buffer_cursor += sprintf(_buffer + _buffer_cursor, " [%01d] %-9s | sz: %d/%d", each_thread, _thread_state, used, avlb);
+        if (avlb) {
+            _buffer_cursor += sprintf(_buffer + _buffer_cursor, " %.2f%%", 100.0f * used / avlb);
         }
+
+#ifdef DEBUG
+        _buffer_cursor += sprintf(_buffer + _buffer_cursor, " | cycles:%lu\n", threadp[each_thread].cyclesAccum);
+#else
+        _buffer_cursor += sprintf(_buffer + _buffer_cursor, "\n");
+#endif
     }
     return _buffer;
 }

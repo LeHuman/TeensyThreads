@@ -191,7 +191,7 @@ public:
     static const int DEFAULT_STACK0_SIZE = 8192; // estimate for thread 0?
     static const int DEFAULT_TICK_MICROSECONDS = 100;
     static const int UTIL_STATE_NAME_DESCRIPTION_LENGTH = 24;
-    static const int UTIL_THREADS_BUFFER_LENGTH = 128 * MAX_THREADS;
+    static const int UTIL_THREADS_BUFFER_LENGTH = 64 + (72 * MAX_THREADS);
 
     // State of threading system
     static const int STARTED = 1;
