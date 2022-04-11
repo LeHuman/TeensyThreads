@@ -148,9 +148,8 @@ typedef struct {
 } software_stack_t;
 
 // The state of each thread (including thread 0)
-class ThreadInfo {
-  public:
-    int stack_size;
+struct ThreadInfo {
+    int stack_size=0;
     uint8_t *stack=0;
     int my_stack = 0;
     software_stack_t save;
@@ -162,6 +161,7 @@ class ThreadInfo {
     unsigned long cyclesStart;  // On T_4 the CycCnt is always active - on T_3.x it currently is not - unless Audio starts it AFAIK
     unsigned long cyclesAccum;
 #endif
+    inline bool invalid() { return stack == 0; }
 };
 
 extern "C" void unused_isr(void);
@@ -213,7 +213,7 @@ protected:
   int thread_count;
   int thread_error;
 
-  ThreadInfo *threadp[MAX_THREADS];
+  ThreadInfo threadp[MAX_THREADS];
 
   ThreadFunctionSleep enter_sleep_callback = NULL;
 
