@@ -463,14 +463,26 @@ void runloop() {
 
 void threadTest() {
     auto t = threads.addThread([](void *) {
+        static int s = 0;
         while (1) {
-            threads.delay(100);
-        } }, 0, 2048);
-    threads.addThread([](void *) {
-        while (1) {
-            Serial.print(threads.threadsInfo());
-            threads.delay(100);
-        } }, 0, 2048);
+            s += 8;
+            char a[s] = {0};
+            // memset(&a, 0xEE, s);
+            Serial.print("H");
+            threads.delay(1000);
+        } }, 0, 256);
+
+    static int g = 256;
+    while (1) {
+        threads.printStack(1);
+        threads.delay(4000);
+        g += 32;
+        Serial.printf("Growing to %d\n", g);
+        if (threads.growStack(t, g) == -1) {
+            Serial.println("Unable to grow stack");
+        }
+    }
+
     runtest();
     threads.kill(t);
     Serial.println("Test infinite loop (will not end)");

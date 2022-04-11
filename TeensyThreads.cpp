@@ -125,11 +125,9 @@ void __attribute((naked, noinline)) threads_svcall_isr(void) {
 #ifdef __IMXRT1062__
 
 /*
- *
  * Teensy 4:
  * Use unused GPT timers for context switching
  */
-
 extern "C" void unused_interrupt_vector(void);
 
 static void __attribute((naked, noinline)) gpt1_isr() {
@@ -224,6 +222,9 @@ char *_util_state_2_string(int state) {
     case 4:
         sprintf(_state, "SUSPENDED");
         break;
+    case 5:
+        sprintf(_state, "GROWING");
+        break;
     default:
         sprintf(_state, "%d", state);
         break;
@@ -286,6 +287,11 @@ Threads::Threads() : current_thread(0), thread_count(1), thread_error(0) {
 }
 
 /*
+ * Set a marker at memory so we can detect memory overruns
+ */
+const uint32_t stackMarker = 0xEFBEADDE;
+
+/*
  * start() - Begin threading
  */
 int Threads::start(int prev_state) {
@@ -310,6 +316,19 @@ int Threads::stop() {
     currentActive = STOPPED;
     __enable_irq();
     return old_state;
+}
+
+void _printStack(int id, void *sp, uint8_t *stack, int size) {
+    Serial.printf("\n----[ Stack %d ]----\n", id);
+    for (int i = 0; i < size; i++) {
+        if (sp == stack + i)
+            Serial.printf(">> %02X ", (stack)[i]);
+        else
+            Serial.printf("%02X ", (stack)[i]);
+
+        if (i && !((i + 1) % 16))
+            Serial.print('\n');
+    }
 }
 
 /*
@@ -341,7 +360,54 @@ void Threads::getNextThread() {
             current_thread = 0; // thread 0 is MSP; always active so return
             break;
         }
-        if ((threadp + current_thread) && threadp[current_thread].flags == RUNNING)
+
+        ThreadInfo *tp = threadp + current_thread;
+
+        if (tp->invalid())
+            continue;
+
+        if (tp->flags == GROWING) {
+            uint8_t *old_stack = tp->stack;
+            uint8_t *new_stack = new uint8_t[tp->new_sz];
+
+            memset(new_stack, 0, tp->new_sz);
+
+            setStackMarker(new_stack);
+            int used = tp->stack_size - ((int)tp->sp - (int)old_stack);
+            memcpy(new_stack + tp->new_sz - used, tp->sp, used);
+
+            interrupt_stack_t *new_pf = (interrupt_stack_t *)((uint8_t *)new_stack + tp->new_sz - sizeof(interrupt_stack_t) - overflow_stack_size);
+            Serial.printf("%p %p:%p\n", tp->sp, old_stack, new_stack);
+            Serial.printf("%p %p %p %p %p %p %p %p %p\n", tp->save.lr, tp->save.r10, tp->save.r11, tp->save.r4, tp->save.r5, tp->save.r6, tp->save.r7, tp->save.r8, tp->save.r9);
+            Serial.printf("%p %p %p %p %p %p %p %p\n", new_pf->r0, new_pf->r1, new_pf->r2, new_pf->r3, new_pf->r12, new_pf->lr, new_pf->pc, new_pf->xpsr);
+
+            // _printStack(current_thread, tp->sp, tp->stack, tp->stack_size);
+
+            // memset(old_stack, 0, tp->stack_size);
+
+            tp->stack = new_stack;
+            tp->stack_size = tp->new_sz;
+            tp->sp = tp->stack + tp->stack_size - used;
+            if (tp->my_stack)
+                delete[] old_stack;
+            tp->my_stack = 1;
+            tp->flags = RUNNING;
+
+            // _printStack(current_thread, tp->sp, tp->stack, tp->stack_size);
+        }
+
+        if (tp->flags != ENDED && *((uint32_t *)tp->stack) != stackMarker) {
+            // TODO: Notify of fault
+            threads.kill(current_thread);
+            continue;
+        }
+        // if (threadp[current_thread].flags != ENDED && !threadp[current_thread].invalid() && ((uint8_t *)threadp[current_thread].sp - threadp[current_thread].stack <= overflow_stack_size || threadp[current_thread].stack >= threadp[current_thread].sp)) {
+        //     Serial.printf("Overflow %d\n", current_thread);
+        //     threads.kill(current_thread);
+        //     continue;
+        // }
+
+        if (tp->flags == RUNNING)
             break;
     }
     currentCount = threadp[current_thread].ticks;
@@ -461,15 +527,9 @@ void Threads::del_process(void) {
         ; // just in case, keep working until context change when execution will not return to this thread
 }
 
-/*
- * Set a marker at memory so we can detect memory overruns
- */
-
-const uint32_t thread_marker = 0xDEADDEAD;
-
 void Threads::setStackMarker(void *stack) {
     uint32_t *m = (uint32_t *)stack;
-    *m = thread_marker;
+    *m = stackMarker;
 }
 
 /*
@@ -481,7 +541,7 @@ int Threads::testStackMarkers(int *threadid) {
             continue;
         if (threadp[i].flags == RUNNING) {
             uint32_t *m = (uint32_t *)threadp[i].stack;
-            if (*m != thread_marker) {
+            if (*m != stackMarker) {
                 if (threadid)
                     *threadid = i;
                 return -1;
@@ -544,6 +604,7 @@ int Threads::addThread(ThreadFunction p, void *arg, int stack_size, void *stack)
                     stack_size = tp->stack_size;
                 } else {
                     stack = new uint8_t[stack_size];
+                    // memset(stack, 0, stack_size);
                     tp->my_stack = 1;
                 }
             } else {
@@ -571,6 +632,17 @@ int Threads::addThread(ThreadFunction p, void *arg, int stack_size, void *stack)
     }
     if (old_state == STARTED)
         start();
+    return -1;
+}
+
+int Threads::growStack(int id, int stack_size) {
+    if (threadp[id].stack_size < stack_size && (threadp[id].flags == RUNNING || threadp[id].flags == SUSPENDED)) {
+        int old_state = threads.stop();
+        threadp[id].new_sz = stack_size;
+        threadp[id].flags = GROWING;
+        threads.start(old_state);
+        return id;
+    }
     return -1;
 }
 
@@ -752,6 +824,12 @@ int Threads::getStackUsed(int id) {
 
 int Threads::getStackRemaining(int id) {
     return (uint8_t *)threadp[id].sp - threadp[id].stack;
+}
+
+void Threads::printStack(int id) {
+    int old_state = threads.stop();
+    _printStack(id, threadp[id].sp, threadp[id].stack, threadp[id].stack_size);
+    threads.start(old_state);
 }
 
 char *Threads::threadsInfo(void) {

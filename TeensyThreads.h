@@ -156,6 +156,7 @@ typedef struct {
  */
 struct ThreadInfo {
     int stack_size = 0;
+    int new_sz = 0;
     uint8_t *stack = 0;
     int my_stack = 0;
     software_stack_t save;
@@ -216,6 +217,7 @@ public:
     static const int ENDED = 2;
     static const int ENDING = 3;
     static const int SUSPENDED = 4;
+    static const int GROWING = 5;
 
     static const int SVC_NUMBER = 0x21;
     static const int SVC_NUMBER_ACTIVE = 0x22;
@@ -336,8 +338,10 @@ public:
      * @brief  Get the id of the currently running thread
      */
     int id();
+    int growStack(int id, int stack_size);
     int getStackUsed(int id);
     int getStackRemaining(int id);
+    void printStack(int id);
     char *threadsInfo(void);
 #ifdef DEBUG
     unsigned long getCyclesUsed(int id);
