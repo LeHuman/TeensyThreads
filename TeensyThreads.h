@@ -156,7 +156,6 @@ typedef struct {
  */
 struct ThreadInfo {
     int stack_size = 0;
-    int new_sz = 0;
     uint8_t *stack = 0;
     int my_stack = 0;
     software_stack_t save;
@@ -338,7 +337,7 @@ public:
      * @brief  Get the id of the currently running thread
      */
     int id();
-    int growStack(int id, int stack_size);
+    int growStack(int id, int size);
     int getStackUsed(int id);
     int getStackRemaining(int id);
     void printStack(int id);

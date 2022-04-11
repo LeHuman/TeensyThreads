@@ -366,46 +366,11 @@ void Threads::getNextThread() {
         if (tp->invalid())
             continue;
 
-        if (tp->flags == GROWING) {
-            uint8_t *old_stack = tp->stack;
-            uint8_t *new_stack = new uint8_t[tp->new_sz];
-
-            memset(new_stack, 0, tp->new_sz);
-
-            setStackMarker(new_stack);
-            int used = tp->stack_size - ((int)tp->sp - (int)old_stack);
-            memcpy(new_stack + tp->new_sz - used, tp->sp, used);
-
-            interrupt_stack_t *new_pf = (interrupt_stack_t *)((uint8_t *)new_stack + tp->new_sz - sizeof(interrupt_stack_t) - overflow_stack_size);
-            Serial.printf("%p %p:%p\n", tp->sp, old_stack, new_stack);
-            Serial.printf("%p %p %p %p %p %p %p %p %p\n", tp->save.lr, tp->save.r10, tp->save.r11, tp->save.r4, tp->save.r5, tp->save.r6, tp->save.r7, tp->save.r8, tp->save.r9);
-            Serial.printf("%p %p %p %p %p %p %p %p\n", new_pf->r0, new_pf->r1, new_pf->r2, new_pf->r3, new_pf->r12, new_pf->lr, new_pf->pc, new_pf->xpsr);
-
-            // _printStack(current_thread, tp->sp, tp->stack, tp->stack_size);
-
-            // memset(old_stack, 0, tp->stack_size);
-
-            tp->stack = new_stack;
-            tp->stack_size = tp->new_sz;
-            tp->sp = tp->stack + tp->stack_size - used;
-            if (tp->my_stack)
-                delete[] old_stack;
-            tp->my_stack = 1;
-            tp->flags = RUNNING;
-
-            // _printStack(current_thread, tp->sp, tp->stack, tp->stack_size);
-        }
-
         if (tp->flags != ENDED && *((uint32_t *)tp->stack) != stackMarker) {
             // TODO: Notify of fault
             threads.kill(current_thread);
             continue;
         }
-        // if (threadp[current_thread].flags != ENDED && !threadp[current_thread].invalid() && ((uint8_t *)threadp[current_thread].sp - threadp[current_thread].stack <= overflow_stack_size || threadp[current_thread].stack >= threadp[current_thread].sp)) {
-        //     Serial.printf("Overflow %d\n", current_thread);
-        //     threads.kill(current_thread);
-        //     continue;
-        // }
 
         if (tp->flags == RUNNING)
             break;
@@ -635,11 +600,34 @@ int Threads::addThread(ThreadFunction p, void *arg, int stack_size, void *stack)
     return -1;
 }
 
-int Threads::growStack(int id, int stack_size) {
-    if (threadp[id].stack_size < stack_size && (threadp[id].flags == RUNNING || threadp[id].flags == SUSPENDED)) {
+int Threads::growStack(int id, int size) {
+    if (size > 0 && (threadp[id].flags == RUNNING || threadp[id].flags == SUSPENDED)) {
         int old_state = threads.stop();
-        threadp[id].new_sz = stack_size;
-        threadp[id].flags = GROWING;
+
+        ThreadInfo *tp = threadp + id;
+
+        int stack_size = size + tp->stack_size;
+        uint8_t *old_stack = tp->stack;
+        uint8_t *new_stack = new uint8_t[stack_size];
+
+        memset(new_stack, 0, stack_size);
+
+        setStackMarker(new_stack);
+        int used = tp->stack_size - ((int)tp->sp - (int)old_stack);
+        memcpy(new_stack + stack_size - used, tp->sp, used);
+
+        // interrupt_stack_t *new_pf = (interrupt_stack_t *)((uint8_t *)new_stack + stack_size - sizeof(interrupt_stack_t) - overflow_stack_size);
+        // Serial.printf("%p %p:%p\n", tp->sp, old_stack, new_stack);
+        // Serial.printf("%p %p %p %p %p %p %p %p %p\n", tp->save.lr, tp->save.r10, tp->save.r11, tp->save.r4, tp->save.r5, tp->save.r6, tp->save.r7, tp->save.r8, tp->save.r9);
+        // Serial.printf("%p %p %p %p %p %p %p %p\n", new_pf->r0, new_pf->r1, new_pf->r2, new_pf->r3, new_pf->r12, new_pf->lr, new_pf->pc, new_pf->xpsr);
+
+        tp->stack = new_stack;
+        tp->stack_size = stack_size;
+        tp->sp = tp->stack + tp->stack_size - used;
+        if (tp->my_stack)
+            delete[] old_stack;
+        tp->my_stack = 1;
+        tp->flags = RUNNING;
         threads.start(old_state);
         return id;
     }
