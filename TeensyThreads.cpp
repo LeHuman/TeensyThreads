@@ -529,18 +529,25 @@ int Threads::addThread(ThreadFunction p, void *arg, int stack_size, void *stack)
     if (stack_size == -1)
         stack_size = DEFAULT_STACK_SIZE;
     for (int i = 1; i < MAX_THREADS; i++) {
-        if (threadp[i].flags == ENDED || threadp[i].flags == EMPTY) { // free thread
-            ThreadInfo *tp = threadp + i;                             // working on this thread
-            if (tp->stack && tp->my_stack) {
+        if (threadp[i].flags == ENDED || threadp[i].flags == EMPTY) {                       // free thread
+            ThreadInfo *tp = threadp + i;                                                   // working on this thread
+            if (tp->stack && tp->my_stack && (tp->stack_size < stack_size || stack != 0)) { // TODO: Check that difference isn't huge
                 delete[] tp->stack;
                 tp->stack = 0;
+                tp->stack_size = 0;
             }
             if (stack == 0) {
-                stack = new uint8_t[stack_size];
-                tp->my_stack = 1;
+                if (tp->stack && tp->my_stack) {
+                    stack = tp->stack;
+                    stack_size = tp->stack_size;
+                } else {
+                    stack = new uint8_t[stack_size];
+                    tp->my_stack = 1;
+                }
             } else {
                 tp->my_stack = 0;
             }
+
             setStackMarker(stack);
             tp->stack = (uint8_t *)stack;
             tp->stack_size = stack_size;
