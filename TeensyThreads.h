@@ -2,22 +2,22 @@
  * Threads.h - Library for threading on the Teensy.
  *
  *******************
- * 
+ *
  * Copyright 2017 by Fernando Trias.
- * 
- * Permission is hereby granted, free of charge, to any person obtaining a copy of this software 
- * and associated documentation files (the "Software"), to deal in the Software without restriction, 
- * including without limitation the rights to use, copy, modify, merge, publish, distribute, 
- * sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is 
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+ * and associated documentation files (the "Software"), to deal in the Software without restriction,
+ * including without limitation the rights to use, copy, modify, merge, publish, distribute,
+ * sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
- * The above copyright notice and this permission notice shall be included in all copies or 
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or
  * substantial portions of the Software.
- * 
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING 
- * BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
- * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+ * BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+ * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  *******************
@@ -69,8 +69,8 @@
 #ifndef _THREADS_H
 #define _THREADS_H
 
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 /* Enabling debugging information allows access to:
  *   getCyclesUsed()
@@ -78,79 +78,79 @@
 // #define DEBUG
 
 extern "C" {
-  void context_switch(void);
-  void context_switch_direct(void);
-  void context_switch_pit_isr(void);
-  void loadNextThread();
-  void stack_overflow_isr(void);
-  void threads_svcall_isr(void);
-  void threads_systick_isr(void);
+void context_switch(void);
+void context_switch_direct(void);
+void context_switch_pit_isr(void);
+void loadNextThread();
+void stack_overflow_isr(void);
+void threads_svcall_isr(void);
+void threads_systick_isr(void);
 }
 
 // The stack frame saved by the interrupt
 typedef struct {
-  uint32_t r0;
-  uint32_t r1;
-  uint32_t r2;
-  uint32_t r3;
-  uint32_t r12;
-  uint32_t lr;
-  uint32_t pc;
-  uint32_t xpsr;
+    uint32_t r0;
+    uint32_t r1;
+    uint32_t r2;
+    uint32_t r3;
+    uint32_t r12;
+    uint32_t lr;
+    uint32_t pc;
+    uint32_t xpsr;
 } interrupt_stack_t;
 
 // The stack frame saved by the context switch
 typedef struct {
-  uint32_t r4;
-  uint32_t r5;
-  uint32_t r6;
-  uint32_t r7;
-  uint32_t r8;
-  uint32_t r9;
-  uint32_t r10;
-  uint32_t r11;
-  uint32_t lr;
+    uint32_t r4;
+    uint32_t r5;
+    uint32_t r6;
+    uint32_t r7;
+    uint32_t r8;
+    uint32_t r9;
+    uint32_t r10;
+    uint32_t r11;
+    uint32_t lr;
 #ifdef __ARM_PCS_VFP
-  uint32_t s0;
-  uint32_t s1;
-  uint32_t s2;
-  uint32_t s3;
-  uint32_t s4;
-  uint32_t s5;
-  uint32_t s6;
-  uint32_t s7;
-  uint32_t s8;
-  uint32_t s9;
-  uint32_t s10;
-  uint32_t s11;
-  uint32_t s12;
-  uint32_t s13;
-  uint32_t s14;
-  uint32_t s15;
-  uint32_t s16;
-  uint32_t s17;
-  uint32_t s18;
-  uint32_t s19;
-  uint32_t s20;
-  uint32_t s21;
-  uint32_t s22;
-  uint32_t s23;
-  uint32_t s24;
-  uint32_t s25;
-  uint32_t s26;
-  uint32_t s27;
-  uint32_t s28;
-  uint32_t s29;
-  uint32_t s30;
-  uint32_t s31;
-  uint32_t fpscr;
+    uint32_t s0;
+    uint32_t s1;
+    uint32_t s2;
+    uint32_t s3;
+    uint32_t s4;
+    uint32_t s5;
+    uint32_t s6;
+    uint32_t s7;
+    uint32_t s8;
+    uint32_t s9;
+    uint32_t s10;
+    uint32_t s11;
+    uint32_t s12;
+    uint32_t s13;
+    uint32_t s14;
+    uint32_t s15;
+    uint32_t s16;
+    uint32_t s17;
+    uint32_t s18;
+    uint32_t s19;
+    uint32_t s20;
+    uint32_t s21;
+    uint32_t s22;
+    uint32_t s23;
+    uint32_t s24;
+    uint32_t s25;
+    uint32_t s26;
+    uint32_t s27;
+    uint32_t s28;
+    uint32_t s29;
+    uint32_t s30;
+    uint32_t s31;
+    uint32_t fpscr;
 #endif
 } software_stack_t;
 
 // The state of each thread (including thread 0)
 struct ThreadInfo {
-    int stack_size=0;
-    uint8_t *stack=0;
+    int stack_size = 0;
+    uint8_t *stack = 0;
     int my_stack = 0;
     software_stack_t save;
     volatile int flags = 0;
@@ -158,7 +158,7 @@ struct ThreadInfo {
     int ticks;
     volatile int sleep_time_till_end_tick; // Per-task sleep time
 #ifdef DEBUG
-    unsigned long cyclesStart;  // On T_4 the CycCnt is always active - on T_3.x it currently is not - unless Audio starts it AFAIK
+    unsigned long cyclesStart; // On T_4 the CycCnt is always active - on T_3.x it currently is not - unless Audio starts it AFAIK
     unsigned long cyclesAccum;
 #endif
     inline bool invalid() { return stack == 0; }
@@ -166,7 +166,7 @@ struct ThreadInfo {
 
 extern "C" void unused_isr(void);
 
-typedef void (*ThreadFunction)(void*);
+typedef void (*ThreadFunction)(void *);
 typedef void (*ThreadFunctionInt)(int);
 typedef void (*ThreadFunctionNone)();
 typedef int (*ThreadFunctionSleep)(int);
@@ -183,193 +183,205 @@ typedef void (*IsrFunction)();
  */
 class Threads {
 public:
-  // The maximum number of threads is hard-coded to simplify
-  // the implementation. See notes of ThreadInfo.
-  int DEFAULT_TICKS = 8;
-  int DEFAULT_STACK_SIZE = 2048;
-  static const int MAX_THREADS = TEENSY_MAX_THREADS;
-  static const int DEFAULT_STACK0_SIZE = 8192; // estimate for thread 0?
-  static const int DEFAULT_TICK_MICROSECONDS = 100;
-  static const int UTIL_STATE_NAME_DESCRIPTION_LENGTH = 24;
-  static const int UTIL_THREADS_BUFFER_LENGTH = 128 * MAX_THREADS;
+    // The maximum number of threads is hard-coded to simplify
+    // the implementation. See notes of ThreadInfo.
+    int DEFAULT_TICKS = 8;
+    int DEFAULT_STACK_SIZE = 2048;
+    static const int MAX_THREADS = TEENSY_MAX_THREADS;
+    static const int DEFAULT_STACK0_SIZE = 8192; // estimate for thread 0?
+    static const int DEFAULT_TICK_MICROSECONDS = 100;
+    static const int UTIL_STATE_NAME_DESCRIPTION_LENGTH = 24;
+    static const int UTIL_THREADS_BUFFER_LENGTH = 128 * MAX_THREADS;
 
-  // State of threading system
-  static const int STARTED = 1;
-  static const int STOPPED = 2;
-  static const int FIRST_RUN = 3;
+    // State of threading system
+    static const int STARTED = 1;
+    static const int STOPPED = 2;
+    static const int FIRST_RUN = 3;
 
-  // State of individual threads
-  static const int EMPTY = 0;
-  static const int RUNNING = 1;
-  static const int ENDED = 2;
-  static const int ENDING = 3;
-  static const int SUSPENDED = 4;
+    // State of individual threads
+    static const int EMPTY = 0;
+    static const int RUNNING = 1;
+    static const int ENDED = 2;
+    static const int ENDING = 3;
+    static const int SUSPENDED = 4;
 
-  static const int SVC_NUMBER = 0x21;
-  static const int SVC_NUMBER_ACTIVE = 0x22;
+    static const int SVC_NUMBER = 0x21;
+    static const int SVC_NUMBER_ACTIVE = 0x22;
 
 protected:
-  int current_thread;
-  int thread_count;
-  int thread_error;
+    int current_thread;
+    int thread_count;
+    int thread_error;
 
-  ThreadInfo threadp[MAX_THREADS];
+    ThreadInfo threadp[MAX_THREADS];
 
-  ThreadFunctionSleep enter_sleep_callback = NULL;
+    ThreadFunctionSleep enter_sleep_callback = NULL;
 
 public: // public for debugging
-  static IsrFunction save_systick_isr;
-  static IsrFunction save_svcall_isr;
+    static IsrFunction save_systick_isr;
+    static IsrFunction save_svcall_isr;
 
 public:
-  Threads();
+    Threads();
 
-  // Create a new thread for function "p", passing argument "arg". If stack is 0,
-  // stack allocated on heap. Function "p" has form "void p(void *)".
-  int addThread(ThreadFunction p, void * arg=0, int stack_size=-1, void *stack=0);
-  // For: void f(int)
-  int addThread(ThreadFunctionInt p, int arg=0, int stack_size=-1, void *stack=0) {
-    return addThread((ThreadFunction)p, (void*)arg, stack_size, stack);
-  }
-  // For: void f()
-  int addThread(ThreadFunctionNone p, int arg=0, int stack_size=-1, void *stack=0) {
-    return addThread((ThreadFunction)p, (void*)arg, stack_size, stack);
-  }
+    // Create a new thread for function "p", passing argument "arg". If stack is 0,
+    // stack allocated on heap. Function "p" has form "void p(void *)".
+    int addThread(ThreadFunction p, void *arg = 0, int stack_size = -1, void *stack = 0);
+    // For: void f(int)
+    int addThread(ThreadFunctionInt p, int arg = 0, int stack_size = -1, void *stack = 0) {
+        return addThread((ThreadFunction)p, (void *)arg, stack_size, stack);
+    }
+    // For: void f()
+    int addThread(ThreadFunctionNone p, int arg = 0, int stack_size = -1, void *stack = 0) {
+        return addThread((ThreadFunction)p, (void *)arg, stack_size, stack);
+    }
 
-  // Get the state; see class constants. Can be EMPTY, RUNNING, etc.
-  int getState(int id);
-  // Explicityly set a state. See getState(). Call with care.
-  int setState(int id, int state);
-  // Wait until thread returns up to timeout_ms milliseconds. If ms is 0, wait
-  // indefinitely.
-  int wait(int id, unsigned int timeout_ms = 0);
-  // If using sleep, please run this in infinite loop
-  void idle();
-  // Suspend execution of current thread for ms milliseconds
-  void sleep(int ms);
-  // Permanently stop a running thread. Thread will end on the next thread slice tick.
-  int kill(int id);
-  // Suspend a thread (on the next slice tick). Can be restarted with restart().
-  int suspend(int id);
-  // Restart a suspended thread.
-  int restart(int id);
-  // Set the slice length time in ticks for a thread (1 tick = 1 millisecond, unless using MicroTimer)
-  void setTimeSlice(int id, unsigned int ticks);
-  // Set the slice length time in ticks for all new threads (1 tick = 1 millisecond, unless using MicroTimer)
-  void setDefaultTimeSlice(unsigned int ticks);
-  // Set the stack size for new threads in bytes
-  void setDefaultStackSize(unsigned int bytes_size);
-  // Use the microsecond timer provided by IntervalTimer & PIT; instead of 1 tick = 1 millisecond,
-  // 1 tick will be the number of microseconds provided (default is 100 microseconds)
-  int setMicroTimer(int tick_microseconds = DEFAULT_TICK_MICROSECONDS);
-  // Simple function to set each time slice to be 'milliseconds' long
-  int setSliceMillis(int milliseconds);
-  // Set each time slice to be 'microseconds' long
-  int setSliceMicros(int microseconds);
-  // Set sleep callback function
-  void setSleepCallback(ThreadFunctionSleep callback);
+    // Get the state; see class constants. Can be EMPTY, RUNNING, etc.
+    int getState(int id);
+    // Explicityly set a state. See getState(). Call with care.
+    int setState(int id, int state);
+    // Wait until thread returns up to timeout_ms milliseconds. If ms is 0, wait
+    // indefinitely.
+    int wait(int id, unsigned int timeout_ms = 0);
+    // If using sleep, please run this in infinite loop
+    void idle();
+    // Suspend execution of current thread for ms milliseconds
+    void sleep(int ms);
+    // Permanently stop a running thread. Thread will end on the next thread slice tick.
+    int kill(int id);
+    // Suspend a thread (on the next slice tick). Can be restarted with restart().
+    int suspend(int id);
+    // Restart a suspended thread.
+    int restart(int id);
+    // Set the slice length time in ticks for a thread (1 tick = 1 millisecond, unless using MicroTimer)
+    void setTimeSlice(int id, unsigned int ticks);
+    // Set the slice length time in ticks for all new threads (1 tick = 1 millisecond, unless using MicroTimer)
+    void setDefaultTimeSlice(unsigned int ticks);
+    // Set the stack size for new threads in bytes
+    void setDefaultStackSize(unsigned int bytes_size);
+    // Use the microsecond timer provided by IntervalTimer & PIT; instead of 1 tick = 1 millisecond,
+    // 1 tick will be the number of microseconds provided (default is 100 microseconds)
+    int setMicroTimer(int tick_microseconds = DEFAULT_TICK_MICROSECONDS);
+    // Simple function to set each time slice to be 'milliseconds' long
+    int setSliceMillis(int milliseconds);
+    // Set each time slice to be 'microseconds' long
+    int setSliceMicros(int microseconds);
+    // Set sleep callback function
+    void setSleepCallback(ThreadFunctionSleep callback);
 
-  // Get the id of the currently running thread
-  int id();
-  int getStackUsed(int id);
-  int getStackRemaining(int id);
-  char* threadsInfo(void);
+    // Get the id of the currently running thread
+    int id();
+    int getStackUsed(int id);
+    int getStackRemaining(int id);
+    char *threadsInfo(void);
 #ifdef DEBUG
-  unsigned long getCyclesUsed(int id);
+    unsigned long getCyclesUsed(int id);
 #endif
 
-  // Yield current thread's remaining time slice to the next thread, causing immediate
-  // context switch
-  static void yield();
-  // Wait for milliseconds using yield(), giving other slices your wait time
-  void delay(int millisecond);
-  // Wait for microseconds using yield(), giving other slices your wait time
-  void delay_us(int microsecond);
-  
-  // Start/restart threading system; returns previous state: STARTED, STOPPED, FIRST_RUN
-  // can pass the previous state to restore
-  int start(int old_state = -1);
-  // Stop threading system; returns previous state: STARTED, STOPPED, FIRST_RUN
-  int stop();
+    // Yield current thread's remaining time slice to the next thread, causing immediate
+    // context switch
+    static void yield();
+    // Wait for milliseconds using yield(), giving other slices your wait time
+    void delay(int millisecond);
+    // Wait for microseconds using yield(), giving other slices your wait time
+    void delay_us(int microsecond);
 
-  // Test all stack markers; if ok return 0; problems, return -1 and set *threadid to id
-  int testStackMarkers(int *threadid = NULL);
+    // Start/restart threading system; returns previous state: STARTED, STOPPED, FIRST_RUN
+    // can pass the previous state to restore
+    int start(int old_state = -1);
+    // Stop threading system; returns previous state: STARTED, STOPPED, FIRST_RUN
+    int stop();
 
-  // Allow these static functions and classes to access our members
-  friend void context_switch(void);
-  friend void context_switch_direct(void);
-  friend void context_pit_isr(void);
-  friend void threads_systick_isr(void);
-  friend void threads_svcall_isr(void);
-  friend void loadNextThread();
-  friend class ThreadLock;
+    // Test all stack markers; if ok return 0; problems, return -1 and set *threadid to id
+    int testStackMarkers(int *threadid = NULL);
+
+    // Allow these static functions and classes to access our members
+    friend void context_switch(void);
+    friend void context_switch_direct(void);
+    friend void context_pit_isr(void);
+    friend void threads_systick_isr(void);
+    friend void threads_svcall_isr(void);
+    friend void loadNextThread();
+    friend class ThreadLock;
 
 protected:
-  void getNextThread();
-  void *loadstack(ThreadFunction p, void * arg, void *stackaddr, int stack_size);
-  static void force_switch_isr();
-  void setStackMarker(void *stack);
+    void getNextThread();
+    void *loadstack(ThreadFunction p, void *arg, void *stackaddr, int stack_size);
+    static void force_switch_isr();
+    void setStackMarker(void *stack);
 
 private:
-  static void del_process(void);
-  void yield_and_start();
+    static void del_process(void);
+    void yield_and_start();
 
 public:
-  class Mutex {
-  private:
-    volatile int state = 0;
-    volatile int waitthread = -1;
-    volatile int waitcount = 0;
-  public:
-    int getState(); // get the lock state; 1=locked; 0=unlocked
-    int lock(unsigned int timeout_ms = 0); // lock, optionally waiting up to timeout_ms milliseconds
-    int try_lock(); // if lock available, get it and return 1; otherwise return 0
-    int unlock();   // unlock if locked
-  };
-
-  class Scope {
-  private:
-    Mutex *r;
-  public:
-    Scope(Mutex& m) { r = &m; r->lock(); }
-    ~Scope() { r->unlock(); }
-  };
-
-  class Suspend {
-  private:
-    int save_state;
-  public:
-    Suspend();      // Stop threads and save thread state
-    ~Suspend();     // Restore saved state
-  };
-
-  template <class C> class GrabTemp {
+    class Mutex {
     private:
-      Mutex *lkp;
-    public:
-      C *me;
-      GrabTemp(C *obj, Mutex *lk) { me = obj; lkp=lk; lkp->lock(); }
-      ~GrabTemp() { lkp->unlock(); }
-      C &get() { return *me; }
-  };
+        volatile int state = 0;
+        volatile int waitthread = -1;
+        volatile int waitcount = 0;
 
-  template <class T> class Grab {
-    private:
-      Mutex lk;
-      T *me;
     public:
-      Grab(T &t) { me = &t; }
-      GrabTemp<T> grab() { return GrabTemp<T>(me, &lk); }
-      operator T&() { return grab().get(); }
-      T *operator->() { return grab().me; }
-      Mutex &getLock() { return lk; }
-  };
+        int getState();                        // get the lock state; 1=locked; 0=unlocked
+        int lock(unsigned int timeout_ms = 0); // lock, optionally waiting up to timeout_ms milliseconds
+        int try_lock();                        // if lock available, get it and return 1; otherwise return 0
+        int unlock();                          // unlock if locked
+    };
+
+    class Scope {
+    private:
+        Mutex *r;
+
+    public:
+        Scope(Mutex &m) {
+            r = &m;
+            r->lock();
+        }
+        ~Scope() { r->unlock(); }
+    };
+
+    class Suspend {
+    private:
+        int save_state;
+
+    public:
+        Suspend();  // Stop threads and save thread state
+        ~Suspend(); // Restore saved state
+    };
+
+    template <class C>
+    class GrabTemp {
+    private:
+        Mutex *lkp;
+
+    public:
+        C *me;
+        GrabTemp(C *obj, Mutex *lk) {
+            me = obj;
+            lkp = lk;
+            lkp->lock();
+        }
+        ~GrabTemp() { lkp->unlock(); }
+        C &get() { return *me; }
+    };
+
+    template <class T>
+    class Grab {
+    private:
+        Mutex lk;
+        T *me;
+
+    public:
+        Grab(T &t) { me = &t; }
+        GrabTemp<T> grab() { return GrabTemp<T>(me, &lk); }
+        operator T &() { return grab().get(); }
+        T *operator->() { return grab().me; }
+        Mutex &getLock() { return lk; }
+    };
 
 #define ThreadWrap(OLDOBJ, NEWOBJ) Threads::Grab<decltype(OLDOBJ)> NEWOBJ(OLDOBJ);
 #define ThreadClone(NEWOBJ) (NEWOBJ.grab().get())
-
 };
-
 
 extern Threads threads;
 
@@ -387,25 +399,27 @@ extern Threads threads;
  *
  */
 namespace std {
-  class thread {
-  private:
-    int id;          // internal thread id
-    int destroy;     // flag to kill thread on instance destruction
-  public:
+class thread {
+private:
+    int id;      // internal thread id
+    int destroy; // flag to kill thread on instance destruction
+public:
     // By casting all (args...) to (void*), if there are more than one args, the compiler
     // will fail to find a matching function. This fancy template just allows any kind of
     // function to match.
-    template <class F, class ...Args> explicit thread(F&& f, Args&&... args) {
-      id = threads.addThread((ThreadFunction)f, (void*)args...);
-      destroy = 1;
+    template <class F, class... Args>
+    explicit thread(F &&f, Args &&...args) {
+        id = threads.addThread((ThreadFunction)f, (void *)args...);
+        destroy = 1;
     }
     // If thread has not been detached when destructor called, then thread must end
     ~thread() {
-      if (destroy) threads.kill(id);
+        if (destroy)
+            threads.kill(id);
     }
     // Threads are joinable until detached per definition, but in this implementation
     // that's not so. We emulate expected behavior anyway.
-    bool joinable() { return destroy==1; }
+    bool joinable() { return destroy == 1; }
     // Once detach() is called, thread runs until it terminates; otherwise it terminates
     // when destructor called.
     void detach() { destroy = 0; }
@@ -415,24 +429,30 @@ namespace std {
     void join() { threads.wait(id); }
     // Get the unique thread id.
     int get_id() { return id; }
-  };
+};
 
-  class mutex {
-    private:
-      Threads::Mutex mx;
-    public:
-      void lock() { mx.lock(); }
-      bool try_lock() { return mx.try_lock(); }
-      void unlock() { mx.unlock(); }
-  };
+class mutex {
+private:
+    Threads::Mutex mx;
 
-  template <class cMutex> class lock_guard {
-    private:
-      cMutex *r;
-    public:
-      explicit lock_guard(cMutex& m) { r = &m; r->lock(); }
-      ~lock_guard() { r->unlock(); }
-  };
-}
+public:
+    void lock() { mx.lock(); }
+    bool try_lock() { return mx.try_lock(); }
+    void unlock() { mx.unlock(); }
+};
+
+template <class cMutex>
+class lock_guard {
+private:
+    cMutex *r;
+
+public:
+    explicit lock_guard(cMutex &m) {
+        r = &m;
+        r->lock();
+    }
+    ~lock_guard() { r->unlock(); }
+};
+} // namespace std
 
 #endif
