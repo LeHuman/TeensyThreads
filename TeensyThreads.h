@@ -173,6 +173,10 @@ typedef int (*ThreadFunctionSleep)(int);
 
 typedef void (*IsrFunction)();
 
+#ifndef TEENSY_MAX_THREADS
+#define TEENSY_MAX_THREADS 8
+#endif
+
 /*
  * Threads handles all the threading interaction with users. It gets
  * instantiated in a global variable "threads".
@@ -181,14 +185,13 @@ class Threads {
 public:
   // The maximum number of threads is hard-coded to simplify
   // the implementation. See notes of ThreadInfo.
-  int DEFAULT_TICKS = 10;
-  int DEFAULT_STACK_SIZE = 1024;
-  static const int MAX_THREADS = 16;
-  static const int DEFAULT_STACK0_SIZE = 10240; // estimate for thread 0?
+  int DEFAULT_TICKS = 8;
+  int DEFAULT_STACK_SIZE = 2048;
+  static const int MAX_THREADS = TEENSY_MAX_THREADS;
+  static const int DEFAULT_STACK0_SIZE = 8192; // estimate for thread 0?
   static const int DEFAULT_TICK_MICROSECONDS = 100;
   static const int UTIL_STATE_NAME_DESCRIPTION_LENGTH = 24;
-  static const int UTIL_TRHEADS_BUFFER_LENGTH = 1024;
-
+  static const int UTIL_THREADS_BUFFER_LENGTH = 128 * MAX_THREADS;
 
   // State of threading system
   static const int STARTED = 1;
@@ -210,17 +213,7 @@ protected:
   int thread_count;
   int thread_error;
 
-  /*
-   * The maximum number of threads is hard-coded. Alternatively, we could implement
-   * a linked list which would mean using up less memory for a small number of
-   * threads while allowing an unlimited number of possible threads. This would
-   * probably not slow down thread switching too much, but it would introduce
-   * complexity and possibly bugs. So to simplifiy for now, we use an array.
-   * But in the future, a linked list might be more appropriate.
-   */
   ThreadInfo *threadp[MAX_THREADS];
-  // This used to be allocated statically, as below. Kept for reference in case of bugs.
-  // ThreadInfo thread[MAX_THREADS];
 
   ThreadFunctionSleep enter_sleep_callback = NULL;
 

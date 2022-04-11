@@ -365,10 +365,12 @@ void Threads::getNextThread() {
 #endif
 }
 
+#ifndef __IMXRT1062__
 /*
  * Empty placeholder for IntervalTimer class
  */
 static void context_pit_empty() {}
+#endif
 
 /*
  * Store the PIT timer flag register for use in assembly
@@ -676,50 +678,53 @@ void Threads::idle() {
 	__disable_irq();
 	task_id_ends = -1;
 	//get lowest sleep interval from sleeping tasks into task_id_ends
-	for (i = 0; i < thread_count; i++) {
-		//sort by ending time first
-		for (j = i + 1; j < thread_count; ++j) {
-      if (! threadp[i]) continue;
-			if (threadp[i]->sleep_time_till_end_tick > threadp[j]->sleep_time_till_end_tick) {
-				//if end time soonest
-				if (getState(i+1) == SUSPENDED) {
-					task_id_ends = j; //store next task
-				}
-			}
-		}
-	}
+    for (i = 0; i < thread_count; i++) {
+        if (!threadp[i])
+            continue;
+        // sort by ending time first
+        for (j = i + 1; j < thread_count; ++j) {
+            if (threadp[i]->sleep_time_till_end_tick > threadp[j]->sleep_time_till_end_tick) {
+                // if end time soonest
+                if (getState(i + 1) == SUSPENDED) {
+                    task_id_ends = j; // store next task
+                }
+            }
+        }
+    }
   if (task_id_ends==-1) return;
 
 	//set the sleeping time to substractor
 	int subtractor = threadp[task_id_ends]->sleep_time_till_end_tick;
-	
-	if (subtractor > 0) {
-		//if sleep is needed
-		volatile int time_spent_asleep = enter_sleep_callback(subtractor);
-		//store new data based on time spent asleep
-		for (i = 0; i < thread_count; i++) {
-      if (! threadp[i]) continue;
-      needs_run[i] = 0;
-      if (getState(i+1) == SUSPENDED) {
-				threadp[i]->sleep_time_till_end_tick -= time_spent_asleep; //substract sleep time
-				//time to run?
-				if (threadp[i]->sleep_time_till_end_tick <= 0) {
-					needs_run[i] = 1;
-				} else {
-					needs_run[i] = 0;
-				}
-			}
-		}
-		//for each thread when slept, resume if needed
-		for (i = 0; i < thread_count; i++) {
-      if (! threadp[i]) continue;
-			if (needs_run[i]) {
-				setState(i+1, RUNNING);
-				threadp[i]->sleep_time_till_end_tick = 60000;
-			}
-		}
-	}
-	__enable_irq();
+
+    if (subtractor > 0) {
+        // if sleep is needed
+        volatile int time_spent_asleep = enter_sleep_callback(subtractor);
+        // store new data based on time spent asleep
+        for (i = 0; i < thread_count; i++) {
+            if (!threadp[i])
+                continue;
+            needs_run[i] = 0;
+            if (getState(i + 1) == SUSPENDED) {
+                threadp[i]->sleep_time_till_end_tick -= time_spent_asleep; // substract sleep time
+                // time to run?
+                if (threadp[i]->sleep_time_till_end_tick <= 0) {
+                    needs_run[i] = 1;
+                } else {
+                    needs_run[i] = 0;
+                }
+            }
+        }
+        // for each thread when slept, resume if needed
+        for (i = 0; i < thread_count; i++) {
+            if (!threadp[i])
+                continue;
+            if (needs_run[i]) {
+                setState(i + 1, RUNNING);
+                threadp[i]->sleep_time_till_end_tick = 60000;
+            }
+        }
+    }
+    __enable_irq();
 	yield();
 }
 
@@ -754,7 +759,7 @@ int Threads::getStackRemaining(int id) {
 
 char *Threads::threadsInfo(void)
 {
-  static char _buffer[Threads::UTIL_TRHEADS_BUFFER_LENGTH];
+  static char _buffer[Threads::UTIL_THREADS_BUFFER_LENGTH];
   uint _buffer_cursor = 0;
   _buffer_cursor = sprintf(_buffer, "_____\n");
   for (int each_thread = 0; each_thread < thread_count; each_thread++)
