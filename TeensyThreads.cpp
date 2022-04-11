@@ -616,6 +616,7 @@ int Threads::growStack(int id, int size) {
         int used = tp->stack_size - ((int)tp->sp - (int)old_stack);
         memcpy(new_stack + stack_size - used, tp->sp, used);
 
+        // FIXME: I believe registers can still be pointing to old stack
         // interrupt_stack_t *new_pf = (interrupt_stack_t *)((uint8_t *)new_stack + stack_size - sizeof(interrupt_stack_t) - overflow_stack_size);
         // Serial.printf("%p %p:%p\n", tp->sp, old_stack, new_stack);
         // Serial.printf("%p %p %p %p %p %p %p %p %p\n", tp->save.lr, tp->save.r10, tp->save.r11, tp->save.r4, tp->save.r5, tp->save.r6, tp->save.r7, tp->save.r8, tp->save.r9);
