@@ -319,7 +319,7 @@ int Threads::stop() {
 }
 
 void _printStack(int id, void *sp, uint8_t *stack, int size) {
-    Serial.printf("\n----[ Stack %d ]----\n", id);
+    Serial.printf("\n----[ Stack %d:%d %p @ %p ]----\n", id, size, stack, sp);
     for (int i = 0; i < size; i++) {
         if (sp == stack + i)
             Serial.printf(">> %02X ", (stack)[i]);
@@ -600,9 +600,15 @@ int Threads::addThread(ThreadFunction p, void *arg, int stack_size, void *stack)
     return -1;
 }
 
+int Threads::growStack(int size) {
+    threadp[current_thread].flags = GROWING;
+    yield();
+    return 1;
+}
+
 int Threads::growStack(int id, int size) {
-    if (size > 0 && (threadp[id].flags == RUNNING || threadp[id].flags == SUSPENDED)) {
-        int old_state = threads.stop();
+    if (size > 0 && threadp[id].flags == GROWING) {
+        // int old_state = threads.stop();
 
         ThreadInfo *tp = threadp + id;
 
@@ -619,17 +625,20 @@ int Threads::growStack(int id, int size) {
         // FIXME: I believe registers can still be pointing to old stack
         // interrupt_stack_t *new_pf = (interrupt_stack_t *)((uint8_t *)new_stack + stack_size - sizeof(interrupt_stack_t) - overflow_stack_size);
         // Serial.printf("%p %p:%p\n", tp->sp, old_stack, new_stack);
-        // Serial.printf("%p %p %p %p %p %p %p %p %p\n", tp->save.lr, tp->save.r10, tp->save.r11, tp->save.r4, tp->save.r5, tp->save.r6, tp->save.r7, tp->save.r8, tp->save.r9);
+        // Serial.printf("%p %p %p %p %p %p %p %p %p\n", tp->save.lr, tp->save.r4, tp->save.r5, tp->save.r6, tp->save.r7, tp->save.r8, tp->save.r9, tp->save.r10, tp->save.r11);
         // Serial.printf("%p %p %p %p %p %p %p %p\n", new_pf->r0, new_pf->r1, new_pf->r2, new_pf->r3, new_pf->r12, new_pf->lr, new_pf->pc, new_pf->xpsr);
+
+        memset(old_stack, 0, tp->stack_size); // Remove
 
         tp->stack = new_stack;
         tp->stack_size = stack_size;
         tp->sp = tp->stack + tp->stack_size - used;
+
         if (tp->my_stack)
             delete[] old_stack;
         tp->my_stack = 1;
         tp->flags = RUNNING;
-        threads.start(old_state);
+        // threads.start(old_state);
         return id;
     }
     return -1;

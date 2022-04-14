@@ -114,12 +114,16 @@ public:
     bool other() { return 1; }
 };
 
+int fault_id = 0;
 int stack_fault = 0;
 int stack_id = 0;
 
 void stack_overflow_isr(void) {
     stack_fault = 1;
-    threads.kill(threads.id());
+    fault_id = threads.id();
+    Serial.printf("Overflow %d\n", fault_id);
+    threads.kill(fault_id);
+    threads.printStack(fault_id);
 }
 
 // turn off optimizations or the optimizer will remove the recursion because
@@ -468,23 +472,28 @@ void threadTest() {
             threads.delay(1000);
             s += 8;
             char a[s]={0};
-            Serial.print("H");
+            if (s == 8)
+                threads.growStack(5);
+            Serial.println("H");
             memset(&a, 0xEE, s);
         } }, 0, 256);
 
     while (1) {
+        threads.delay(100);
         threads.printStack(1);
-        threads.delay(4000);
-        Serial.println("Growing");
-        if (threads.growStack(t, 32) == -1) {
-            Serial.println("Unable to grow stack");
+        if (threads.growStack(t, 8) != -1) {
+            threads.printStack(1);
+            Serial.println("Growing");
+            break;
         }
     }
 
-    runtest();
-    threads.kill(t);
-    Serial.println("Test infinite loop (will not end)");
-    while (1) {
-        runloop();
-    }
+    threads.wait(t);
+
+    // runtest();
+    // threads.kill(t);
+    // Serial.println("Test infinite loop (will not end)");
+    // while (1) {
+    //     runloop();
+    // }
 }

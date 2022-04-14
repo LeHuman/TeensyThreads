@@ -337,7 +337,28 @@ public:
      * @brief  Get the id of the currently running thread
      */
     int id();
+
+    /**
+     * @brief Grow the stack of the current thread, WIP
+     *
+     * @warning Not safe to use, must ensure registers don't point to anywhere in stack
+     *
+     * @param size bytes to grow by
+     * @return int -1 if failed
+     */
+    int growStack(int size);
+
+    /**
+     * @brief Grow the stack of a running thread, WIP
+     *
+     * @warning This function is a WIP, not at all safe to use
+     *
+     * @param id Id of the thread
+     * @param size bytes to grow by
+     * @return int -1 if failed
+     */
     int growStack(int id, int size);
+
     int getStackUsed(int id);
     int getStackRemaining(int id);
     void printStack(int id);
