@@ -79,13 +79,12 @@
 #endif
 
 extern "C" {
-void context_switch(void);
-void context_switch_direct(void);
-void context_switch_pit_isr(void);
-void loadNextThread();
+/**
+ * @brief Header for the overflow interrupt function.
+ * By default, it simply ends the errored thread.
+ * This function can be defined elsewhere to override it.
+ */
 void stack_overflow_isr(void);
-void threads_svcall_isr(void);
-void threads_systick_isr(void);
 }
 
 namespace Thread {
@@ -96,8 +95,10 @@ namespace Thread {
  */
 static int DEFAULT_TICKS = 8;
 static int DEFAULT_STACK_SIZE = 2048;
+static const int SVC_NUMBER = 0x21;
+static const int SVC_NUMBER_ACTIVE = 0x22;
 static const int MAX_THREADS = TEENSY_MAX_THREADS;
-static const int DEFAULT_STACK0_SIZE = 8192; // estimate for thread 0?
+static const int DEFAULT_STACK0_SIZE = 8192; // Stack size for the main thread
 static const int DEFAULT_TICK_MICROSECONDS = 100;
 static const int UTIL_STATE_NAME_DESCRIPTION_LENGTH = 24;
 static const int UTIL_THREADS_BUFFER_LENGTH = 64 + (72 * MAX_THREADS);
@@ -105,28 +106,28 @@ static const int UTIL_THREADS_BUFFER_LENGTH = 64 + (72 * MAX_THREADS);
 /**
  * @brief  State of threading system
  */
-static const int STARTED = 1;
-static const int STOPPED = 2;
-static const int FIRST_RUN = 3;
+enum SystemState : const int {
+    STARTED = 1,
+    STOPPED,
+    FIRST_RUN,
+};
 
 /**
  * @brief  State of individual threads
  */
-static const int EMPTY = 0;
-static const int RUNNING = 1;
-static const int ENDED = 2;
-static const int ENDING = 3;
-static const int SUSPENDED = 4;
-static const int GROWING = 5;
-
-static const int SVC_NUMBER = 0x21;
-static const int SVC_NUMBER_ACTIVE = 0x22;
+enum ThreadState : const int {
+    EMPTY,
+    RUNNING,
+    ENDED,
+    ENDING,
+    SUSPENDED,
+    GROWING,
+};
 
 typedef void (*ThreadFunction)(void *);
 typedef void (*ThreadFunctionInt)(int);
 typedef void (*ThreadFunctionNone)();
 typedef int (*ThreadFunctionSleep)(int);
-
 typedef void (*IsrFunction)();
 
 // For debugging
@@ -215,19 +216,6 @@ struct ThreadInfo {
 #endif
     inline bool invalid() { return stack == 0; }
 };
-
-extern "C" void unused_isr(void);
-
-/**
- * @brief  Allow these static functions and classes to access our members
- */
-// void context_switch(void);
-// void context_switch_direct(void);
-// void context_pit_isr(void);
-// void threads_systick_isr(void);
-// void threads_svcall_isr(void);
-// void loadNextThread();
-// class ThreadLock;
 
 /**
  * @brief  Create a new thread for function "p", passing argument "arg". If stack is 0,
@@ -453,6 +441,7 @@ public:
 #define ThreadWrap(OLDOBJ, NEWOBJ) Thread::Grab<decltype(OLDOBJ)> NEWOBJ(OLDOBJ);
 #define ThreadClone(NEWOBJ) (NEWOBJ.grab().get())
 } // namespace Thread
+
 /*
  * Rudimentary compliance to C++11 class
  *
