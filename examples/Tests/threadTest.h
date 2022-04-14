@@ -30,7 +30,7 @@ void my_priv_func3() {
 }
 
 void my_priv_func_lock(void *lock) {
-    Threads::Mutex *m = (Threads::Mutex *)lock;
+    Thread::Mutex *m = (Thread::Mutex *)lock;
     p4 = 0;
     m->lock();
     uint32_t mx = millis();
@@ -39,7 +39,7 @@ void my_priv_func_lock(void *lock) {
     m->unlock();
 }
 
-Threads::Mutex count_lock;
+Thread::Mutex count_lock;
 volatile int count1 = 0;
 volatile int count2 = 0;
 volatile int count3 = 0;
@@ -103,7 +103,7 @@ class subtest {
 public:
     int value;
     void h(int x) { value = x; }
-    int test(Threads::Mutex *lk) { return lk->getState(); }
+    int test(Thread::Mutex *lk) { return lk->getState(); }
     int getValue() { return value; }
 } subinst;
 
@@ -120,10 +120,10 @@ int stack_id = 0;
 
 void stack_overflow_isr(void) {
     stack_fault = 1;
-    fault_id = threads.id();
+    fault_id = Thread::id();
     Serial.printf("Overflow %d\n", fault_id);
-    threads.kill(fault_id);
-    threads.printStack(fault_id);
+    Thread::kill(fault_id);
+    Thread::printStack(fault_id);
 }
 
 // turn off optimizations or the optimizer will remove the recursion because
@@ -154,7 +154,7 @@ void runtest() {
         Serial.println("***FAIL***");
 
     Serial.print("Test thread start ");
-    id1 = threads.addThread(my_priv_func1, 1);
+    id1 = Thread::addThread(my_priv_func1, 1);
     delayx(300);
     if (p1 != 0)
         Serial.println("OK");
@@ -162,7 +162,7 @@ void runtest() {
         Serial.println("***FAIL***");
 
     Serial.print("Test thread run state ");
-    if (threads.getState(id1) == Threads::RUNNING)
+    if (Thread::getState(id1) == Thread::RUNNING)
         Serial.println("OK");
     else
         Serial.println("***FAIL***");
@@ -191,13 +191,13 @@ void runtest() {
     Serial.println(rate);
 
     Serial.print("Test set time slice ");
-    id1 = threads.addThread(my_priv_func1, 1);
+    id1 = Thread::addThread(my_priv_func1, 1);
     delayx(2000);
     save_p = p1;
-    id1 = threads.addThread(my_priv_func1, 1);
-    threads.setTimeSlice(id1, 200);
+    id1 = Thread::addThread(my_priv_func1, 1);
+    Thread::setTimeSlice(id1, 200);
     delayx(2000);
-    float expected = (float)save_p * 2.0 * 200.0 / ((float)threads.DEFAULT_TICKS + 200.0);
+    float expected = (float)save_p * 2.0 * 200.0 / ((float)Thread::DEFAULT_TICKS + 200.0);
     rate = (float)p1 / (float)expected;
     if (rate > 0.9 && rate < 1.1)
         Serial.println("OK");
@@ -214,8 +214,8 @@ void runtest() {
     Serial.println(rate);
 
     Serial.print("Test delay yield ");
-    id1 = threads.addThread(my_priv_func1, 1);
-    threads.delay(1100);
+    id1 = Thread::addThread(my_priv_func1, 1);
+    Thread::delay(1100);
     rate = (float)p1 / (float)save_time;
     if (rate > 0.7 && rate < 1.4)
         Serial.println("OK");
@@ -226,14 +226,14 @@ void runtest() {
     Serial.println(rate);
 
     Serial.print("Test thread end state ");
-    if (threads.getState(id1) == Threads::ENDED)
+    if (Thread::getState(id1) == Thread::ENDED)
         Serial.println("OK");
     else
         Serial.println("***FAIL***");
 
     Serial.print("Test thread reinitialize ");
     p2 = 0;
-    id2 = threads.addThread(my_priv_func2);
+    id2 = Thread::addThread(my_priv_func2);
     delayx(200);
     if (p2 != 0)
         Serial.println("OK");
@@ -241,7 +241,7 @@ void runtest() {
         Serial.println("***FAIL***");
 
     Serial.print("Test stack usage ");
-    int sz = threads.getStackUsed(id2);
+    int sz = Thread::getStackUsed(id2);
     // Seria.println(sz);
     if (sz >= 40 && sz <= 48)
         Serial.println("OK");
@@ -250,7 +250,7 @@ void runtest() {
 
     Serial.print("Test thread suspend ");
     delayx(200);
-    threads.suspend(id2);
+    Thread::suspend(id2);
     delayx(200);
     save_p = p2;
     delayx(200);
@@ -261,18 +261,18 @@ void runtest() {
 
     Serial.print("Test thread restart ");
     p2 = 0;
-    threads.restart(id2);
+    Thread::restart(id2);
     delayx(1000);
     if (p2 != 0)
         Serial.println("OK");
     else
         Serial.println("***FAIL***");
 
-    threads.kill(id2);
+    // Thread::kill(id2);
     delayx(200);
 
     Serial.print("Test thread stop ");
-    threads.stop();
+    Thread::stop();
     delayx(200);
     p2 = 0;
     delayx(200);
@@ -282,17 +282,19 @@ void runtest() {
         Serial.println("***FAIL***");
 
     Serial.print("Test thread start ");
-    threads.start();
+    Thread::start();
     delayx(200);
     if (p2 != 0)
         Serial.println("OK");
     else
         Serial.println("***FAIL***");
 
+    Thread::kill(id2);
+
     Serial.print("Test thread wait ");
-    id3 = threads.addThread(my_priv_func1, 1);
+    id3 = Thread::addThread(my_priv_func1, 1);
     int time = millis();
-    int r = threads.wait(id3);
+    int r = Thread::wait(id3);
     delayx(100);
     time = millis() - time;
     if (r == id3)
@@ -307,9 +309,9 @@ void runtest() {
         Serial.println("***FAIL***");
 
     Serial.print("Test thread kill ");
-    id3 = threads.addThread(my_priv_func1, 2);
+    id3 = Thread::addThread(my_priv_func1, 2);
     delayx(300);
-    threads.kill(id3);
+    Thread::kill(id3);
     delayx(300);
     save_p = p1;
     delayx(300);
@@ -334,10 +336,10 @@ void runtest() {
         Serial.println("***FAIL***");
 
     Serial.print("Test basic lock ");
-    id1 = threads.addThread(my_priv_func1, 2);
+    id1 = Thread::addThread(my_priv_func1, 2);
     delayx(500);
     {
-        Threads::Suspend lock;
+        Thread::Suspend lock;
         save_p = p1;
         delayx(500);
         if (save_p == p1)
@@ -354,7 +356,7 @@ void runtest() {
         Serial.println("***FAIL***");
 
     Serial.print("Test mutex lock state ");
-    Threads::Mutex mx;
+    Thread::Mutex mx;
     mx.lock();
     r = mx.try_lock();
     if (r == 0)
@@ -363,7 +365,7 @@ void runtest() {
         Serial.println("***FAIL***");
 
     Serial.print("Test mutex lock thread ");
-    id1 = threads.addThread(my_priv_func_lock, &mx);
+    id1 = Thread::addThread(my_priv_func_lock, &mx);
     delayx(200);
     if (p4 == 0)
         Serial.println("OK");
@@ -379,13 +381,13 @@ void runtest() {
         Serial.println("***FAIL***");
 
     Serial.print("Test fast locks ");
-    id1 = threads.addThread(lock_test1);
-    id2 = threads.addThread(lock_test2);
-    id3 = threads.addThread(lock_test3);
+    id1 = Thread::addThread(lock_test1);
+    id2 = Thread::addThread(lock_test2);
+    id3 = Thread::addThread(lock_test3);
     delayx(3000);
-    threads.kill(id1);
-    threads.kill(id2);
-    threads.kill(id3);
+    Thread::kill(id1);
+    Thread::kill(id2);
+    Thread::kill(id3);
     if (ratio_test(count1, count2, 1.2))
         Serial.println("***FAIL***");
     // else if (ratio_test(count1, count3, 1.2)) Serial.println("***FAIL***");
@@ -440,9 +442,9 @@ void runtest() {
 
     Serial.print("Test thread stack overflow ");
     uint8_t *mstack = new uint8_t[1024];
-    stack_id = threads.addThread(recursive_thread, 0, 512, mstack + 512);
-    threads.delay(2000);
-    threads.kill(stack_id);
+    stack_id = Thread::addThread(recursive_thread, 0, 512, mstack + 512);
+    Thread::delay(2000);
+    Thread::kill(stack_id);
     if (stack_fault)
         Serial.println("OK");
     else
@@ -466,34 +468,38 @@ void runloop() {
 }
 
 void threadTest() {
-    auto t = threads.addThread([](void *) {
-        static int s = 0;
-        while (1) {
-            threads.delay(1000);
-            s += 8;
-            char a[s]={0};
-            if (s == 8)
-                threads.growStack(5);
-            Serial.println("H");
-            memset(&a, 0xEE, s);
-        } }, 0, 256);
-
-    while (1) {
-        threads.delay(100);
-        threads.printStack(1);
-        if (threads.growStack(t, 8) != -1) {
-            threads.printStack(1);
-            Serial.println("Growing");
-            break;
-        }
-    }
-
-    threads.wait(t);
-
-    // runtest();
-    // threads.kill(t);
-    // Serial.println("Test infinite loop (will not end)");
+    // auto t = Thread::addThread([](void *) {
+    //     static int s = 0;
+    //     while (1) {
+    //         Thread::delay(1000);
+    //         s += 8;
+    //         char a[s]={0};
+    //         if (s == 8)
+    //             Thread::growStack(5);
+    //         Serial.println("H");
+    //         memset(&a, 0xEE, s);
+    //     } }, 0, 256);
+    // Thread::addThread([](int a) {
+    //     while (1) {
+    //         Serial.print(Thread::threadsInfo());
+    //         Thread::delay(500);
+    //     } }, 0, 2048);
     // while (1) {
-    //     runloop();
+    //     Thread::delay(100);
+    //     Thread::printStack(1);
+    //     if (Thread::growStack(t, 8) != -1) {
+    //         Thread::printStack(1);
+    //         Serial.println("Growing");
+    //         break;
+    //     }
     // }
+
+    // Thread::wait(t);
+
+    runtest();
+    // Thread::kill(t);
+    Serial.println("Test infinite loop (will not end)");
+    while (1) {
+        runloop();
+    }
 }

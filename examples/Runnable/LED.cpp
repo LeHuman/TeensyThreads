@@ -44,9 +44,9 @@ void LED::runTarget(void *arg)
 	do
 	{
 		thisobj->turnOn();
-		threads.delay(period * (duty / 100));
+		Thread::delay(period * (duty / 100));
 		thisobj->turnOff();
-		threads.delay((period * (1 - (duty / 100))));
+		Thread::delay((period * (1 - (duty / 100))));
 
 		// For quick example, just assuming that thread delay will equal to exact execution time
     	elapsedDuration -= period;

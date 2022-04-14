@@ -28,7 +28,7 @@ void my_priv_func3() {
 }
 
 void my_priv_func_lock(void *lock) {
-  Threads::Mutex *m = (Threads::Mutex *) lock;
+  Thread::Mutex *m = (Thread::Mutex *) lock;
   p4 = 0;
   m->lock();
   uint32_t mx = millis();
@@ -36,7 +36,7 @@ void my_priv_func_lock(void *lock) {
   m->unlock();
 }
 
-Threads::Mutex count_lock;
+Thread::Mutex count_lock;
 volatile int count1 = 0;
 volatile int count2 = 0;
 volatile int count3 = 0;
@@ -97,7 +97,7 @@ class subtest {
 public:
 int value;
 void h(int x) { value = x; }
-int test(Threads::Mutex *lk) { return lk->getState(); }
+int test(Thread::Mutex *lk) { return lk->getState(); }
 int getValue() { return value; }
 } subinst;
 
@@ -147,7 +147,7 @@ void runtest() {
   else Serial.println("***FAIL***");
 
   Serial.print("Test thread run state ");
-  if (threads.getState(id1) == Threads::RUNNING) Serial.println("OK");
+  if (threads.getState(id1) == Thread::RUNNING) Serial.println("OK");
   else Serial.println("***FAIL***");
 
   Serial.print("Test thread return ");
@@ -201,7 +201,7 @@ void runtest() {
   Serial.println(rate);
 
   Serial.print("Test thread end state ");
-  if (threads.getState(id1) == Threads::ENDED) Serial.println("OK");
+  if (threads.getState(id1) == Thread::ENDED) Serial.println("OK");
   else Serial.println("***FAIL***");
 
   Serial.print("Test thread reinitialize ");
@@ -287,7 +287,7 @@ void runtest() {
   id1 = threads.addThread(my_priv_func1, 2);
   delayx(500);
   {
-    Threads::Suspend lock;
+    Thread::Suspend lock;
     save_p = p1;
     delayx(500);
     if (save_p == p1) Serial.println("OK");
@@ -301,7 +301,7 @@ void runtest() {
 
 
   Serial.print("Test mutex lock state ");
-  Threads::Mutex mx;
+  Thread::Mutex mx;
   mx.lock();
   r = mx.try_lock();
   if (r == 0) Serial.println("OK");
