@@ -302,7 +302,6 @@ static const struct initer { // TODO: remove
 
 #endif
     }
-
 } initer;
 
 /*

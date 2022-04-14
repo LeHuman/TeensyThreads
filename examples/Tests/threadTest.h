@@ -6,8 +6,8 @@ volatile int p2 = 0;
 volatile int p3 = 0;
 volatile int p4 = 0;
 
-static const char * FAIL_STR = "-*-*-*-*-*-*-*-*-*-[ FAIL ]-*-*-*-*-*-*-*-*-*-";
-static const char * OKAY_STR = "-------------------[ OKAY ]-------------------";
+static const char *FAIL_STR = "-*-*-*-*-*-*-*-*-*-[ FAIL ]-*-*-*-*-*-*-*-*-*-";
+static const char *OKAY_STR = "-------------------[ OKAY ]-------------------";
 
 void my_priv_func1(int data) {
     p1 = 0;
@@ -470,6 +470,26 @@ void runloop() {
     }
 }
 
+extern unsigned long _heap_start;
+extern unsigned long _heap_end;
+extern char *__brkval;
+
+float heapUsage() {
+    return 100.0f * ((int)((char *)&_heap_end - __brkval)) / ((int)(char *)&_heap_end);
+    // return (char *)&_heap_end;
+}
+
+#include "malloc.h"
+
+// extern volatile void *__bss_end;
+
+int heapSize() {
+    // return __bss_end;
+    return mallinfo().arena - mallinfo().keepcost;
+}
+
+volatile double *m;
+
 void threadTest() {
     // auto t = Thread::addThread([](void *) {
     //     static int s = 0;
@@ -487,6 +507,16 @@ void threadTest() {
     //         Serial.print(Thread::threadsInfo());
     //         Thread::delay(500);
     //     } }, 0, 2048);
+    Thread::addThread([](int a) {
+        while (1) {
+            // Serial.println(mallinfo().arena);
+            // Serial.println((int)(char *)&_heap_end);
+            Serial.println(heapSize());
+            // Serial.println(((int)((char *)&_heap_end - __brkval)));
+            // Serial.println(mallinfo().fordblks);
+            Thread::delay(500);
+            m = new double();
+        } }, 0, 2048);
     // while (1) {
     //     Thread::delay(100);
     //     Thread::printStack(1);

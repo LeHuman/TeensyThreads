@@ -87,6 +87,8 @@ extern "C" {
 void stack_overflow_isr(void);
 }
 
+extern "C" void unused_isr(void);
+
 namespace Thread {
 
 /**
