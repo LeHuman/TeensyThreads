@@ -865,7 +865,7 @@ char *threadsInfo(void) {
 }
 
 #ifdef DEBUG
-unsigned long Threads::getCyclesUsed(int id) {
+unsigned long getCyclesUsed(int id) {
     stop();
     unsigned long ret = threads[id].cyclesAccum;
     start();
