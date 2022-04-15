@@ -473,20 +473,23 @@ void runloop() {
 extern unsigned long _heap_start;
 extern unsigned long _heap_end;
 extern char *__brkval;
+int heap_size = (int)((char *)&_heap_end - __brkval);
+
+auto hMux = Thread::Mutex();
 
 float heapUsage() {
-    return 100.0f * ((int)((char *)&_heap_end - __brkval)) / ((int)(char *)&_heap_end);
-    // return (char *)&_heap_end;
+    Thread::Scope lock(hMux);
+    return 100.0f * (heap_size - (int)((char *)&_heap_end - __brkval)) / heap_size;
 }
 
-#include "malloc.h"
+// #include "malloc.h"
 
-// extern volatile void *__bss_end;
+// // extern volatile void *__bss_end;
 
-int heapSize() {
-    // return __bss_end;
-    return mallinfo().arena - mallinfo().keepcost;
-}
+// int heapSize() {
+//     // return __bss_end;
+//     return mallinfo().arena - mallinfo().keepcost;
+// }
 
 volatile double *m;
 
@@ -509,13 +512,34 @@ void threadTest() {
     //     } }, 0, 2048);
     Thread::addThread([](int a) {
         while (1) {
+            if (heapUsage() >= 75)
+                break;
+            m = new double(2);
+            m = new double(2);
+            m = new double(2);
+            m = new double(2);
+            // m = (double *)malloc(2048);
+            if (m != NULL)
+                *m = 5.0;
+            m = 0;
+            Thread::yield();
+        } }, 0, 1024);
+    Thread::addThread([](int a) {
+        static auto usage = heapUsage();
+        while (1) {
+            if (usage != heapUsage())
+                Serial.println(usage = heapUsage());
             // Serial.println(mallinfo().arena);
             // Serial.println((int)(char *)&_heap_end);
-            Serial.println(heapSize());
-            // Serial.println(((int)((char *)&_heap_end - __brkval)));
             // Serial.println(mallinfo().fordblks);
-            Thread::delay(500);
-            m = new double();
+            // Thread::delay(1);
+            Thread::yield();
+        } }, 0, 2048);
+    Thread::addThread([](int a) {
+        while (1) {
+            // SerialUSB1.println(Thread::threadsInfo()); // Use USB_DUAL_SERIAL
+            Serial.println(Thread::threadsInfo());
+            Thread::delay(250);
         } }, 0, 2048);
     // while (1) {
     //     Thread::delay(100);
