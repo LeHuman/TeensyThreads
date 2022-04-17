@@ -507,7 +507,7 @@ void threadTest() {
     //     } }, 0, 256);
     // Thread::addThread([](int a) {
     //     while (1) {
-    //         Serial.print(Thread::threadsInfo());
+    //         Serial.print(Thread::infoString());
     //         Thread::delay(500);
     //     } }, 0, 2048);
     Thread::addThread([](int a) {
@@ -537,8 +537,8 @@ void threadTest() {
         } }, 0, 2048);
     Thread::addThread([](int a) {
         while (1) {
-            // SerialUSB1.println(Thread::threadsInfo()); // Use USB_DUAL_SERIAL
-            Serial.println(Thread::threadsInfo());
+            // SerialUSB1.println(Thread::infoString()); // Use USB_DUAL_SERIAL
+            Serial.println(Thread::infoString());
             Thread::delay(250);
         } }, 0, 2048);
     // while (1) {

@@ -559,9 +559,9 @@ void *loadstack(ThreadFunction p, void *arg, void *stackaddr, int stack_size) {
  *           stack_size. If stack_size is 0, a default size will be used.
  *    return: an integer ID to be used for other calls
  */
-int addThread(ThreadFunction p, void *arg, int stack_size, void *stack) {
+int addThread(ThreadFunction p, void *arg, int stack_size, void *stack, const char *name) {
     int old_state = stop();
-    if (stack_size == -1)
+    if (stack_size <= -1)
         stack_size = DEFAULT_STACK_SIZE;
     for (int i = 1; i < MAX_THREADS; i++) {
         if (threads[i].flags == ENDED || threads[i].flags == EMPTY) {                       // free thread
@@ -571,7 +571,7 @@ int addThread(ThreadFunction p, void *arg, int stack_size, void *stack) {
                 tp->stack = 0;
                 tp->stack_size = 0;
             }
-            if (stack == 0) {
+            if (stack == nullptr) {
                 if (tp->stack && tp->my_stack) {
                     stack = tp->stack;
                     stack_size = tp->stack_size;
@@ -593,6 +593,7 @@ int addThread(ThreadFunction p, void *arg, int stack_size, void *stack) {
             tp->flags = RUNNING;
             tp->save.lr = 0xFFFFFFF9;
 #ifdef DEBUG
+            tp->name = name;
             tp->cyclesStart = ARM_DWT_CYCCNT;
             tp->cyclesAccum = 0;
 #endif
@@ -608,8 +609,8 @@ int addThread(ThreadFunction p, void *arg, int stack_size, void *stack) {
     return -1;
 }
 
-int addThread(ThreadFunctionInt p, int arg, int stack_size, void *stack) { return addThread((ThreadFunction)p, (void *)arg, stack_size, stack); }
-int addThread(ThreadFunctionNone p, int arg, int stack_size, void *stack) { return addThread((ThreadFunction)p, (void *)arg, stack_size, stack); }
+int addThread(ThreadFunctionInt p, int arg, int stack_size, void *stack, const char *name) { return addThread((ThreadFunction)p, (void *)arg, stack_size, stack, name); }
+int addThread(ThreadFunctionNone p, int stack_size, void *stack, const char *name) { return addThread((ThreadFunction)p, 0, stack_size, stack, name); }
 
 int growStack(int size) {
     threads[current_thread].flags = GROWING;
@@ -841,7 +842,7 @@ void printStack(int id) {
     start(old_state);
 }
 
-char *threadsInfo(void) {
+char *infoString(void) {
     static char _buffer[UTIL_THREADS_BUFFER_LENGTH];
     uint _buffer_cursor = sprintf(_buffer, "\n----[ Thread Info %d/%d ]----\n", thread_count, MAX_THREADS);
     for (int each_thread = 0; each_thread < MAX_THREADS; each_thread++) {
@@ -850,6 +851,9 @@ char *threadsInfo(void) {
         char *_thread_state = _util_state_2_string(threads[each_thread].flags);
         int used = getStackUsed(each_thread);
         int avlb = threads[each_thread].stack_size;
+#ifdef DEBUG
+        _buffer_cursor += snprintf(_buffer + _buffer_cursor, 10, " [%-10s]", threads[each_thread].name);
+#endif
         _buffer_cursor += sprintf(_buffer + _buffer_cursor, " [%01d] %-9s | sz: %d/%d", each_thread, _thread_state, used, avlb);
         if (avlb) {
             _buffer_cursor += sprintf(_buffer + _buffer_cursor, " %.2f%%", 100.0f * used / avlb);

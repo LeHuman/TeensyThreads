@@ -105,6 +105,8 @@ static const int DEFAULT_TICK_MICROSECONDS = 100;
 static const int UTIL_STATE_NAME_DESCRIPTION_LENGTH = 24;
 static const int UTIL_THREADS_BUFFER_LENGTH = 64 + (72 * MAX_THREADS);
 
+static const char *NIL_NAME = "NIL_NAME";
+
 /**
  * @brief  State of threading system
  */
@@ -205,35 +207,58 @@ typedef struct {
  */
 struct ThreadInfo {
     volatile int flags = 0;
-    uint8_t *stack = 0;
+    uint8_t *stack = nullptr;
     int stack_size = 0;
     int ticks;
-    void *sp;
+    void *sp = nullptr;
     int my_stack = 0;
     software_stack_t save;
     volatile int sleep_time_till_end_tick; // Per-task sleep time
 #ifdef DEBUG
-    unsigned long cyclesStart; // On T_4 the CycCnt is always active - on T_3.x it currently is not - unless Audio starts it AFAIK
+    const char *name = nullptr; // Name is only stored in debug mode, only used for infoString
+    unsigned long cyclesStart;  // On T_4 the CycCnt is always active - on T_3.x it currently is not - unless Audio starts it AFAIK
     unsigned long cyclesAccum;
 #endif
     inline bool invalid() { return stack == 0; }
 };
 
 /**
- * @brief  Create a new thread for function "p", passing argument "arg". If stack is 0,
- * stack allocated on heap. Function "p" has form "void p(void *)".
+ * @brief Creates a new thread using the function "func" with the form "void p(void *)", passing it the argument "arg".
+ * If stack is 0, the stack is allocated on heap.
+ *
+ * @param func Function to use
+ * @param arg argument to pass, 0 by default
+ * @param stack_size size of the stack, -1 by default
+ * @param stack pointer to the stack that should be used, 0 by default
+ * @param name Name of the thread
+ * @return int ID of the newly created thread, -1 if it failed
  */
-int addThread(ThreadFunction p, void *arg = 0, int stack_size = -1, void *stack = 0);
+int addThread(ThreadFunction func, void *arg = 0, int stack_size = -1, void *stack = 0, const char *name = NIL_NAME);
 
 /**
- * @brief  For: void f(int)
+ * @brief Creates a new thread using the function "func" with the form "void p(int)", passing it the integer "arg".
+ * If stack is 0, the stack is allocated on heap.
+ *
+ * @param func Function to use
+ * @param arg argument to pass, 0 by default
+ * @param stack_size size of the stack, -1 by default
+ * @param stack pointer to the stack that should be used, 0 by default
+ * @param name Name of the thread
+ * @return int ID of the newly created thread, -1 if it failed
  */
-int addThread(ThreadFunctionInt p, int arg = 0, int stack_size = -1, void *stack = 0);
+int addThread(ThreadFunctionInt func, int arg = 0, int stack_size = -1, void *stack = 0, const char *name = NIL_NAME);
 
 /**
- * @brief  For: void f()
+ * @brief Creates a new thread using the function "func" with the form "void p()".
+ * If stack is 0, the stack is allocated on heap.
+ *
+ * @param func Function to use
+ * @param stack_size size of the stack, -1 by default
+ * @param stack pointer to the stack that should be used, 0 by default
+ * @param name Name of the thread
+ * @return int ID of the newly created thread, -1 if it failed
  */
-int addThread(ThreadFunctionNone p, int arg = 0, int stack_size = -1, void *stack = 0);
+int addThread(ThreadFunctionNone func, int stack_size = -1, void *stack = 0, const char *name = NIL_NAME);
 
 /**
  * @brief  Get the state; see class constants. Can be EMPTY, RUNNING, etc.
@@ -340,7 +365,7 @@ int growStack(int id, int size);
 int getStackUsed(int id);
 int getStackRemaining(int id);
 void printStack(int id);
-char *threadsInfo(void);
+char *infoString(void);
 #ifdef DEBUG
 unsigned long getCyclesUsed(int id);
 #endif
