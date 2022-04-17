@@ -75,7 +75,7 @@
 // #define DEBUG
 
 #ifndef TEENSY_MAX_THREADS
-#define TEENSY_MAX_THREADS 8
+#define TEENSY_MAX_THREADS 12
 #endif
 
 extern "C" {
@@ -105,7 +105,7 @@ static const int DEFAULT_TICK_MICROSECONDS = 100;
 static const int UTIL_STATE_NAME_DESCRIPTION_LENGTH = 24;
 static const int UTIL_THREADS_BUFFER_LENGTH = 64 + (72 * MAX_THREADS);
 
-static const char *NIL_NAME = "NIL_NAME";
+static const char *NIL_NAME = "NIL NAME";
 
 /**
  * @brief  State of threading system
@@ -261,7 +261,10 @@ int addThread(ThreadFunctionInt func, int arg = 0, int stack_size = -1, void *st
 int addThread(ThreadFunctionNone func, int stack_size = -1, void *stack = 0, const char *name = NIL_NAME);
 
 /**
- * @brief  Get the state; see class constants. Can be EMPTY, RUNNING, etc.
+ * @brief Get the state of a thread
+ * 
+ * @param id ID of the thread
+ * @return int See class constants. Can be EMPTY, RUNNING, etc.
  */
 int getState(int id);
 

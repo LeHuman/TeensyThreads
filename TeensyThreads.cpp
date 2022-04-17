@@ -852,7 +852,8 @@ char *infoString(void) {
         int used = getStackUsed(each_thread);
         int avlb = threads[each_thread].stack_size;
 #ifdef DEBUG
-        _buffer_cursor += snprintf(_buffer + _buffer_cursor, 10, " [%-10s]", threads[each_thread].name);
+        if (threads[each_thread].name != nullptr)
+            _buffer_cursor += sprintf(_buffer + _buffer_cursor, " %-8s", threads[each_thread].name);
 #endif
         _buffer_cursor += sprintf(_buffer + _buffer_cursor, " [%01d] %-9s | sz: %d/%d", each_thread, _thread_state, used, avlb);
         if (avlb) {
