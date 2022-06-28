@@ -75,7 +75,7 @@
 // #define DEBUG
 
 #ifndef TEENSY_MAX_THREADS
-#define TEENSY_MAX_THREADS 12
+#define TEENSY_MAX_THREADS 12 // IMPROVE: Auto match exact number of static threads needed
 #endif
 
 extern "C" {
@@ -100,8 +100,10 @@ static int DEFAULT_STACK_SIZE = 2048;
 static const int SVC_NUMBER = 0x21;
 static const int SVC_NUMBER_ACTIVE = 0x22;
 static const int MAX_THREADS = TEENSY_MAX_THREADS;
-static const int DEFAULT_STACK0_SIZE = 8192; // Stack size for the main thread
-static const int DEFAULT_TICK_MICROSECONDS = 100;
+static const int DEFAULT_PRIORITY = 8;            // Default priority for threads
+static const int DEFAULT_STACK0_SIZE = 8192;      // Stack size for the main thread
+static const int TICK_BUDGET = MAX_THREADS * 5;   // How many ticks are distributed to all threads
+static const int DEFAULT_TICK_MICROSECONDS = 100; // How many µs a single tick is by default
 static const int UTIL_STATE_NAME_DESCRIPTION_LENGTH = 24;
 static const int UTIL_THREADS_BUFFER_LENGTH = 64 + (72 * MAX_THREADS);
 
@@ -210,8 +212,9 @@ struct ThreadInfo {
     uint8_t *stack = nullptr;
     int stack_size = 0;
     int ticks;
+    uint8_t priority;
+    bool my_stack = 0;
     void *sp = nullptr;
-    int my_stack = 0;
     software_stack_t save;
     volatile int sleep_time_till_end_tick; // Per-task sleep time
 #ifdef DEBUG
@@ -231,9 +234,10 @@ struct ThreadInfo {
  * @param stack_size size of the stack, -1 by default
  * @param stack pointer to the stack that should be used, 0 by default
  * @param name Name of the thread
+ * @param priority Priority of the thread, from 1 - 16
  * @return int ID of the newly created thread, -1 if it failed
  */
-int addThread(ThreadFunction func, void *arg = 0, int stack_size = -1, void *stack = 0, const char *name = NIL_NAME);
+int addThread(ThreadFunction func, void *arg = 0, int stack_size = -1, void *stack = 0, const char *name = NIL_NAME, uint8_t priority = DEFAULT_PRIORITY);
 
 /**
  * @brief Creates a new thread using the function "func" with the form "void p(int)", passing it the integer "arg".
@@ -244,9 +248,10 @@ int addThread(ThreadFunction func, void *arg = 0, int stack_size = -1, void *sta
  * @param stack_size size of the stack, -1 by default
  * @param stack pointer to the stack that should be used, 0 by default
  * @param name Name of the thread
+ * @param priority Priority of the thread, from 1 - 16
  * @return int ID of the newly created thread, -1 if it failed
  */
-int addThread(ThreadFunctionInt func, int arg = 0, int stack_size = -1, void *stack = 0, const char *name = NIL_NAME);
+int addThread(ThreadFunctionInt func, int arg = 0, int stack_size = -1, void *stack = 0, const char *name = NIL_NAME, uint8_t priority = DEFAULT_PRIORITY);
 
 /**
  * @brief Creates a new thread using the function "func" with the form "void p()".
@@ -256,13 +261,14 @@ int addThread(ThreadFunctionInt func, int arg = 0, int stack_size = -1, void *st
  * @param stack_size size of the stack, -1 by default
  * @param stack pointer to the stack that should be used, 0 by default
  * @param name Name of the thread
+ * @param priority Priority of the thread, from 1 - 16
  * @return int ID of the newly created thread, -1 if it failed
  */
-int addThread(ThreadFunctionNone func, int stack_size = -1, void *stack = 0, const char *name = NIL_NAME);
+int addThread(ThreadFunctionNone func, int stack_size = -1, void *stack = 0, const char *name = NIL_NAME, uint8_t priority = DEFAULT_PRIORITY);
 
 /**
  * @brief Get the state of a thread
- * 
+ *
  * @param id ID of the thread
  * @return int See class constants. Can be EMPTY, RUNNING, etc.
  */

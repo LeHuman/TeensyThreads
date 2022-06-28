@@ -523,7 +523,7 @@ void threadTest() {
                 *m = 5.0;
             m = 0;
             Thread::yield();
-        } }, 0, 1024);
+        } }, 0, 1024, 0, "TEST4", 4);
     Thread::addThread([](int a) {
         static auto usage = heapUsage();
         while (1) {
@@ -534,13 +534,13 @@ void threadTest() {
             // Serial.println(mallinfo().fordblks);
             // Thread::delay(1);
             Thread::yield();
-        } }, 0, 2048);
+        } }, 0, 2048, 0, "TEST2", 2);
     Thread::addThread([](int a) {
         while (1) {
             // SerialUSB1.println(Thread::infoString()); // Use USB_DUAL_SERIAL
             Serial.println(Thread::infoString());
             Thread::delay(250);
-        } }, 0, 2048);
+        } }, 0, 2048, 0, "TEST2", 2);
     // while (1) {
     //     Thread::delay(100);
     //     Thread::printStack(1);

@@ -24,6 +24,7 @@
  */
 #include "TeensyThreads.h"
 #include <Arduino.h>
+#include <map>
 #include <string.h>
 
 #ifndef __IMXRT1062__
@@ -40,7 +41,7 @@ IntervalTimer context_timer;
 extern char *_estack;
 
 Thread::ThreadInfo threads[Thread::MAX_THREADS] = {
-    {Thread::RUNNING, (uint8_t *)&_estack - Thread::DEFAULT_STACK0_SIZE, Thread::DEFAULT_STACK0_SIZE, Thread::DEFAULT_TICKS},
+    {Thread::RUNNING, (uint8_t *)&_estack - Thread::DEFAULT_STACK0_SIZE, Thread::DEFAULT_STACK0_SIZE, Thread::DEFAULT_TICKS, 1},
 };
 
 /*
@@ -98,6 +99,8 @@ void yield_and_start();
 
 unsigned int time_start;
 unsigned int time_end;
+
+static std::map<uint8_t, uint> priorities;
 
 extern "C" {
 void loadNextThread() {
@@ -277,7 +280,7 @@ static const struct initer { // TODO: remove
             save_svcall_isr = 0;
         _VectorsRam[11] = threads_svcall_isr;
 
-        gtp1_init(1000); // tick every millisecond
+        gtp1_init(DEFAULT_TICK_MICROSECONDS); // tick every millisecond
 #else
 
         // currentUseSystick = 1;
@@ -292,6 +295,8 @@ static const struct initer { // TODO: remove
         if (save_systick_isr == unused_isr)
             save_systick_isr = 0;
         _VectorsRam[15] = threads_systick_isr;
+
+        setMicroTimer(DEFAULT_TICK_MICROSECONDS);
 
 #ifdef DEBUG
 #if defined(__MK20DX256__) || defined(__MK20DX128__)
@@ -388,6 +393,7 @@ void getNextThread() {
         if (tp->flags == RUNNING)
             break;
     }
+
     currentCount = threads[current_thread].ticks;
 
     currentThread = threads + current_thread;
@@ -475,6 +481,24 @@ int setSliceMillis(int milliseconds) {
     return 1;
 }
 
+void resetPriorities() {
+    for (ThreadInfo &thread : threads) {
+        uint i = priorities[thread.priority];
+        uint8_t p = thread.priority;
+        int n = thread_count;
+        int t = TICK_BUDGET;
+        thread.ticks = (4 * n * t - n * i * p - i * t) / (3 * n * n); // \frac{4nt-nip-it}{3n^{2}}
+        thread.ticks += !thread.ticks;                                // Add one tick if zero
+    }
+}
+
+void endThread(ThreadInfo *thread) {
+    thread->flags = ENDED; // clear the flags so thread can stop and be reused
+    priorities[thread->priority]--;
+    thread_count--;
+    resetPriorities();
+}
+
 /*
  * del_process() - This is called when the task returns
  *
@@ -493,8 +517,7 @@ void del_process(void) {
     // }
     // Serial.print("del:");
     // Serial.println(id());
-    thread_count--;
-    me->flags = ENDED; // clear the flags so thread can stop and be reused
+    endThread(me);
     start(old_state);
     while (1)
         ; // just in case, keep working until context change when execution will not return to this thread
@@ -559,7 +582,7 @@ void *loadstack(ThreadFunction p, void *arg, void *stackaddr, int stack_size) {
  *           stack_size. If stack_size is 0, a default size will be used.
  *    return: an integer ID to be used for other calls
  */
-int addThread(ThreadFunction p, void *arg, int stack_size, void *stack, const char *name) {
+int addThread(ThreadFunction p, void *arg, int stack_size, void *stack, const char *name, uint8_t priority) {
     int old_state = stop();
     if (stack_size <= -1)
         stack_size = DEFAULT_STACK_SIZE;
@@ -589,7 +612,8 @@ int addThread(ThreadFunction p, void *arg, int stack_size, void *stack, const ch
             tp->stack_size = stack_size;
             void *psp = loadstack(p, arg, tp->stack, tp->stack_size);
             tp->sp = psp;
-            tp->ticks = DEFAULT_TICKS;
+            tp->priority = priority;
+            priorities[priority]++;
             tp->flags = RUNNING;
             tp->save.lr = 0xFFFFFFF9;
 #ifdef DEBUG
@@ -599,6 +623,9 @@ int addThread(ThreadFunction p, void *arg, int stack_size, void *stack, const ch
 #endif
             currentActive = old_state;
             thread_count++;
+
+            resetPriorities();
+
             if (old_state == STARTED || old_state == FIRST_RUN)
                 start();
             return i;
@@ -609,8 +636,8 @@ int addThread(ThreadFunction p, void *arg, int stack_size, void *stack, const ch
     return -1;
 }
 
-int addThread(ThreadFunctionInt p, int arg, int stack_size, void *stack, const char *name) { return addThread((ThreadFunction)p, (void *)arg, stack_size, stack, name); }
-int addThread(ThreadFunctionNone p, int stack_size, void *stack, const char *name) { return addThread((ThreadFunction)p, 0, stack_size, stack, name); }
+int addThread(ThreadFunctionInt p, int arg, int stack_size, void *stack, const char *name, uint8_t priority) { return addThread((ThreadFunction)p, (void *)arg, stack_size, stack, name, priority); }
+int addThread(ThreadFunctionNone p, int stack_size, void *stack, const char *name, uint8_t priority) { return addThread((ThreadFunction)p, 0, stack_size, stack, name, priority); }
 
 int growStack(int size) {
     threads[current_thread].flags = GROWING;
@@ -684,8 +711,7 @@ int wait(int id, unsigned int timeout_ms) {
 int kill(int id) {
     if (threads[id].flags != ENDED) {
         int old_state = stop();
-        thread_count--;
-        threads[id].flags = ENDED;
+        endThread(threads + id);
         start(old_state);
     }
     return id;
@@ -845,6 +871,7 @@ void printStack(int id) {
 char *infoString(void) {
     static char _buffer[UTIL_THREADS_BUFFER_LENGTH];
     uint _buffer_cursor = sprintf(_buffer, "\n----[ Thread Info %d/%d ]----\n", thread_count, MAX_THREADS);
+    uint ts = 0;
     for (int each_thread = 0; each_thread < MAX_THREADS; each_thread++) {
         if (threads[each_thread].invalid())
             continue;
@@ -855,7 +882,8 @@ char *infoString(void) {
         if (threads[each_thread].name != nullptr)
             _buffer_cursor += sprintf(_buffer + _buffer_cursor, " %-8s", threads[each_thread].name);
 #endif
-        _buffer_cursor += sprintf(_buffer + _buffer_cursor, " [%01d] %-9s | sz: %d/%d", each_thread, _thread_state, used, avlb);
+        _buffer_cursor += sprintf(_buffer + _buffer_cursor, " [%01d] %-9s | p:%d t:%d sz: %d/%d", each_thread, _thread_state, threads[each_thread].priority, threads[each_thread].ticks, used, avlb);
+        ts += threads[each_thread].ticks;
         if (avlb) {
             _buffer_cursor += sprintf(_buffer + _buffer_cursor, " %.2f%%", 100.0f * used / avlb);
         }
@@ -866,6 +894,13 @@ char *infoString(void) {
         _buffer_cursor += sprintf(_buffer + _buffer_cursor, "\n");
 #endif
     }
+    _buffer_cursor += sprintf(_buffer + _buffer_cursor, "    ps: ");
+
+    for (auto const &[k, v] : priorities)
+        _buffer_cursor += sprintf(_buffer + _buffer_cursor, "%d/%d ", k, v);
+
+    _buffer_cursor += sprintf(_buffer + _buffer_cursor, "| ts: %d", ts);
+
     return _buffer;
 }
 
